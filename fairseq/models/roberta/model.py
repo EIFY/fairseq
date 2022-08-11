@@ -641,6 +641,9 @@ def base_architecture(args):
         args, "no_token_positional_embeddings", False
     )
 
+    args.encoder_alibi = safe_getattr(args, "encoder_alibi", False)
+    args.encoder_alibi_asymmetrical = safe_getattr(args, "encoder_alibi_asymmetrical", False)    
+
     # BERT has a few structural differences compared to the original Transformer
     args.encoder_learned_pos = safe_getattr(args, "encoder_learned_pos", True)
     args.layernorm_embedding = safe_getattr(args, "layernorm_embedding", True)
