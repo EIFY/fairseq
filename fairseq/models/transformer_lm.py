@@ -395,6 +395,13 @@ def base_lm_architecture(args):
         args.checkpoint_activations = True
 
 
+@register_model_architecture("transformer_lm", "transformer_lm_alibi")
+def transformer_lm_big(args):
+    args.decoder_alibi = safe_getattr(args, "decoder_alibi", True)
+    args.no_token_positional_embeddings = safe_getattr(args, "no_token_positional_embeddings", True)
+    base_lm_architecture(args)
+
+
 @register_model_architecture("transformer_lm", "transformer_lm_big")
 def transformer_lm_big(args):
     args.decoder_layers = safe_getattr(args, "decoder_layers", 12)

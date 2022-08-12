@@ -102,6 +102,12 @@ class TransformerEncoderBase(FairseqEncoder):
         else:
             self.layer_norm = None
 
+        if cfg.encoder.alibi:
+            assert self.embed_positions is None, "ALiBi shouldn't be used with positional embedding"
+            self.alibi = utils.alibi(cfg.encoder.attention_heads, self.max_source_positions, cfg.encoder.alibi_asymmetrical)
+        else:
+            self.alibi = None
+
     def build_encoder_layer(self, cfg):
         layer = transformer_layer.TransformerEncoderLayerBase(
             cfg, return_fc=self.return_fc
@@ -210,6 +216,13 @@ class TransformerEncoderBase(FairseqEncoder):
         if has_pads:
             x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
 
+        if self.alibi is not None:
+            shape = x.size()
+            self.alibi = self.alibi.to(x)
+            self_attn_mask = self.alibi[:, :shape[1], :shape[1]].repeat(shape[0], 1, 1)
+        else:
+            self_attn_mask = None
+
         # B x T x C -> T x B x C
         x = x.transpose(0, 1)
 
@@ -222,7 +235,9 @@ class TransformerEncoderBase(FairseqEncoder):
         # encoder layers
         for layer in self.layers:
             lr = layer(
-                x, encoder_padding_mask=encoder_padding_mask if has_pads else None
+                x,
+                encoder_padding_mask=encoder_padding_mask if has_pads else None,
+                self_attn_mask=self_attn_mask,
             )
 
             if isinstance(lr, tuple) and len(lr) == 2:

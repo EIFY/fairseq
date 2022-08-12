@@ -55,7 +55,14 @@ class EncDecBaseConfig(FairseqDataclass):
             "help": "config for xFormers attention, defined in xformers.components.attention.AttentionConfig"
         },
     )
-
+    # args for "Train Short, Test Long: Attention with Linear Biases (ALiBi) Enables Input Length Extrapolation" (Press, 2022)
+    alibi: bool = field(
+        default=False, metadata={"help": "use attention with linear biases (ALiBi)"}
+    )
+    alibi_asymmetrical: bool = field(
+        default=False, metadata={"help": "make AliBi asymmetrical by a constant shift"}
+    )
+    
 
 @dataclass
 class DecoderConfig(EncDecBaseConfig):
