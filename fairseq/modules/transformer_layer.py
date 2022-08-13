@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
 from fairseq import utils
@@ -39,7 +40,6 @@ class TransformerEncoderLayerBase(nn.Module):
         self.quant_noise = cfg.quant_noise.pq
         self.quant_noise_block_size = cfg.quant_noise.pq_block_size
         self.self_attn = self.build_self_attention(self.embed_dim, cfg)
-        self.self_attn_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
         self.dropout_module = FairseqDropout(
             cfg.dropout, module_name=self.__class__.__name__
         )
@@ -64,8 +64,12 @@ class TransformerEncoderLayerBase(nn.Module):
             self.quant_noise,
             self.quant_noise_block_size,
         )
-
-        self.final_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
+        if cfg.encoder.l2norm:
+            l2norm_lambda = lambda x: F.normalize(x, dim=-1)
+            self.self_attn_layer_norm = self.final_layer_norm = l2norm_lambda
+        else:
+            self.self_attn_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
+            self.final_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
 
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(

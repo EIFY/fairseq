@@ -216,6 +216,11 @@ class RobertaModel(FairseqEncoderModel):
             default=-1,
             help="number of feedforward blocks to remove in each transformer layer, -1 means keeping all ffn blocks",
         )
+        parser.add_argument(
+            "--contrastive-pretraining",
+            action="store_true",
+            help="contrastive language pretraining",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -495,6 +500,21 @@ class RobertaLMHead(nn.Module):
         return x
 
 
+class ClapHead(nn.Module):
+    """Head for masked language modeling."""
+
+    def __init__(self):
+        super().__init__()
+        self.beta = nn.Parameter(torch.tensor(0.0001))
+
+    def forward(self, features, normalized_embed_tokens, masked_tokens=None):
+        # Only project the masked tokens while training,
+        # saves both memory and computation
+        if masked_tokens is not None:
+            features = features[masked_tokens, :]
+        return self.beta * F.linear(features, normalized_embed_tokens)
+
+
 class RobertaClassificationHead(nn.Module):
     """Head for sentence-level classification tasks."""
 
@@ -552,16 +572,19 @@ class RobertaEncoder(FairseqEncoder):
 
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
-        self.lm_head = self.build_lm_head(
-            embed_dim=args.encoder_embed_dim,
-            output_dim=len(dictionary),
-            activation_fn=args.activation_fn,
-            weight=(
-                self.sentence_encoder.embed_tokens.weight
-                if not args.untie_weights_roberta
-                else None
-            ),
-        )
+        if self.args.contrastive_pretraining:
+            self.clap_head = ClapHead()
+        else:
+            self.lm_head = self.build_lm_head(
+                embed_dim=args.encoder_embed_dim,
+                output_dim=len(dictionary),
+                activation_fn=args.activation_fn,
+                weight=(
+                    self.sentence_encoder.embed_tokens.weight
+                    if not args.untie_weights_roberta
+                    else None
+                ),
+            )
 
     def build_embedding(self, vocab_size, embedding_dim, padding_idx):
         return nn.Embedding(vocab_size, embedding_dim, padding_idx)
@@ -598,11 +621,19 @@ class RobertaEncoder(FairseqEncoder):
                   is a list of hidden states. Note that the hidden
                   states have shape `(src_len, batch, vocab)`.
         """
+        if self.args.contrastive_pretraining:
+            token_embeddings = F.normalize(self.sentence_encoder.embed_tokens(src_tokens), dim=-1)
+        else:
+            token_embeddings = None
         x, extra = self.extract_features(
-            src_tokens, return_all_hiddens=return_all_hiddens
+            src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
         if not features_only:
-            x = self.output_layer(x, masked_tokens=masked_tokens)
+            if self.args.contrastive_pretraining:
+                normalized_embed_tokens = F.normalize(self.sentence_encoder.embed_tokens.weight, dim=-1)
+                x = self.clap_head(x, normalized_embed_tokens, masked_tokens=masked_tokens)
+            else:
+                x = self.output_layer(x, masked_tokens=masked_tokens)
         return x, extra
 
     def extract_features(self, src_tokens, return_all_hiddens=False, **kwargs):
@@ -671,6 +702,9 @@ def base_architecture(args):
     args.spectral_norm_classification_head = safe_getattr(
         args, "spectral_norm_classification_head", False
     )
+
+    args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
+    args.encoder_l2norm = safe_getattr(args, "encoder_l2norm", False)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")

@@ -120,18 +120,25 @@ class MultiheadAttention(nn.Module):
             "Self-attention requires query, key and " "value to be of the same size"
         )
 
+        def rescale(m):
+            mean = 0
+            std = (2 / (5 * self.embed_dim)) ** 0.5
+            m.weight.data.normal_(mean, std)
+            m.bias.data.zero_()
+            return m
+
         self.k_proj = quant_noise(
-            nn.Linear(self.kdim, embed_dim, bias=bias), q_noise, qn_block_size
+            rescale(nn.Linear(self.kdim, embed_dim, bias=bias)), q_noise, qn_block_size
         )
         self.v_proj = quant_noise(
-            nn.Linear(self.vdim, embed_dim, bias=bias), q_noise, qn_block_size
+            rescale(nn.Linear(self.vdim, embed_dim, bias=bias)), q_noise, qn_block_size
         )
         self.q_proj = quant_noise(
-            nn.Linear(embed_dim, embed_dim, bias=bias), q_noise, qn_block_size
+            rescale(nn.Linear(embed_dim, embed_dim, bias=bias)), q_noise, qn_block_size
         )
 
         self.out_proj = quant_noise(
-            nn.Linear(embed_dim, embed_dim, bias=bias), q_noise, qn_block_size
+            rescale(nn.Linear(embed_dim, embed_dim, bias=bias)), q_noise, qn_block_size
         )
 
         if add_bias_kv:
