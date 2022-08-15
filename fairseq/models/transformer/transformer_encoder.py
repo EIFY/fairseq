@@ -57,7 +57,7 @@ class TransformerEncoderBase(FairseqEncoder):
         self.return_fc = return_fc
 
         embed_dim = embed_tokens.embedding_dim
-        self.padding_idx = embed_tokens.padding_idx
+        self.padding_idx = dictionary.pad()
         self.max_source_positions = cfg.max_source_positions
 
         self.embed_tokens = embed_tokens

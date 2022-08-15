@@ -221,6 +221,13 @@ class RobertaModel(FairseqEncoderModel):
             action="store_true",
             help="contrastive language pretraining",
         )
+        parser.add_argument(
+            "--initial-beta",
+            type=float,
+            metavar="B",
+            default=1.0,
+            help="initial beta for constrastive pretraining",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -503,9 +510,9 @@ class RobertaLMHead(nn.Module):
 class ClapHead(nn.Module):
     """Head for masked language modeling."""
 
-    def __init__(self):
+    def __init__(self, initial_beta):
         super().__init__()
-        self.beta = nn.Parameter(torch.tensor(0.0001))
+        self.beta = nn.Parameter(torch.tensor(initial_beta))
 
     def forward(self, features, normalized_embed_tokens, masked_tokens=None):
         # Only project the masked tokens while training,
@@ -569,11 +576,10 @@ class RobertaEncoder(FairseqEncoder):
         embed_tokens = self.build_embedding(
             len(dictionary), args.encoder_embed_dim, dictionary.pad()
         )
-
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
         if self.args.contrastive_pretraining:
-            self.clap_head = ClapHead()
+            self.clap_head = ClapHead(args.initial_beta)
         else:
             self.lm_head = self.build_lm_head(
                 embed_dim=args.encoder_embed_dim,
@@ -587,7 +593,8 @@ class RobertaEncoder(FairseqEncoder):
             )
 
     def build_embedding(self, vocab_size, embedding_dim, padding_idx):
-        return nn.Embedding(vocab_size, embedding_dim, padding_idx)
+        # Workaround: torch.nn.Embedding() sets padding embedding to zero-vector, which can't be normalized.
+        return nn.Embedding(vocab_size, embedding_dim, None if self.args.contrastive_pretraining else padding_idx)
 
     def build_encoder(self, args, dictionary, embed_tokens):
         encoder = TransformerEncoder(args, dictionary, embed_tokens)
@@ -703,8 +710,9 @@ def base_architecture(args):
         args, "spectral_norm_classification_head", False
     )
 
-    args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
     args.encoder_l2norm = safe_getattr(args, "encoder_l2norm", False)
+    args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
+    args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
