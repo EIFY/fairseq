@@ -46,4 +46,4 @@ model:
   layernorm_embedding: false
   encoder_l2norm: true
   contrastive_pretraining: true
-  initial_tau: 2.
+  initial_beta: 25.
