@@ -38,12 +38,11 @@ optimization:
 model:
   _name: roberta
   max_positions: 512
-  dropout: 0.1
-  attention_dropout: 0.1
+  dropout: 0.
+  attention_dropout: 0.
   no_token_positional_embeddings: true
   encoder_alibi: true
   encoder_alibi_asymmetrical: true
   layernorm_embedding: false
-  encoder_l2norm: true
   contrastive_pretraining: true
-  initial_beta: 25.
+  initial_beta: 1.

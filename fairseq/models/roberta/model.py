@@ -710,7 +710,6 @@ def base_architecture(args):
         args, "spectral_norm_classification_head", False
     )
 
-    args.encoder_l2norm = safe_getattr(args, "encoder_l2norm", False)
     args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
     args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
 

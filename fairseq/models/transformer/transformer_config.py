@@ -63,9 +63,6 @@ class EncDecBaseConfig(FairseqDataclass):
         default=False, metadata={"help": "make AliBi asymmetrical by a constant shift"}
     )
 
-    l2norm: bool = field(
-        default=False, metadata={"help": "use l2 norm instead of layernorm"}
-    )
 
 @dataclass
 class DecoderConfig(EncDecBaseConfig):
