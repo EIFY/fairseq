@@ -222,11 +222,11 @@ class RobertaModel(FairseqEncoderModel):
             help="contrastive language pretraining",
         )
         parser.add_argument(
-            "--initial-beta",
+            "--initial-tau",
             type=float,
-            metavar="B",
+            metavar="T",
             default=1.0,
-            help="initial beta for constrastive pretraining",
+            help="initial tau for constrastive pretraining",
         )
 
     @classmethod
@@ -510,16 +510,16 @@ class RobertaLMHead(nn.Module):
 class ClapHead(nn.Module):
     """Head for masked language modeling."""
 
-    def __init__(self, initial_beta):
+    def __init__(self, initial_tau):
         super().__init__()
-        self.beta = nn.Parameter(torch.tensor(initial_beta))
+        self.tau = nn.Parameter(torch.tensor(initial_tau))
 
     def forward(self, features, normalized_embed_tokens, masked_tokens=None):
         # Only project the masked tokens while training,
         # saves both memory and computation
         if masked_tokens is not None:
             features = features[masked_tokens, :]
-        return self.beta * F.linear(features, normalized_embed_tokens)
+        return torch.exp(self.tau) * F.linear(features, normalized_embed_tokens)
 
 
 class RobertaClassificationHead(nn.Module):
@@ -579,7 +579,7 @@ class RobertaEncoder(FairseqEncoder):
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
         if self.args.contrastive_pretraining:
-            self.clap_head = ClapHead(args.initial_beta)
+            self.clap_head = ClapHead(args.initial_tau)
         else:
             self.lm_head = self.build_lm_head(
                 embed_dim=args.encoder_embed_dim,
@@ -712,7 +712,7 @@ def base_architecture(args):
 
     args.encoder_l2norm = safe_getattr(args, "encoder_l2norm", False)
     args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
-    args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
+    args.initial_tau = safe_getattr(args, "initial_tau", 1.0)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
