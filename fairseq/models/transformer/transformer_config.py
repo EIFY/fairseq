@@ -62,7 +62,7 @@ class EncDecBaseConfig(FairseqDataclass):
     alibi_asymmetrical: bool = field(
         default=False, metadata={"help": "make AliBi asymmetrical by a constant shift"}
     )
-    
+
 
 @dataclass
 class DecoderConfig(EncDecBaseConfig):
