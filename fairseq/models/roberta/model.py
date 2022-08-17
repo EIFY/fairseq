@@ -510,16 +510,17 @@ class RobertaLMHead(nn.Module):
 class ClapHead(nn.Module):
     """Head for masked language modeling."""
 
-    def __init__(self, initial_beta):
+    def __init__(self, initial_beta, weight):
         super().__init__()
         self.beta = nn.Parameter(torch.tensor(initial_beta))
+        self.weight = weight
 
-    def forward(self, features, normalized_embed_tokens, masked_tokens=None):
+    def forward(self, features, masked_tokens=None):
         # Only project the masked tokens while training,
         # saves both memory and computation
         if masked_tokens is not None:
             features = features[masked_tokens, :]
-        return self.beta * F.linear(features, normalized_embed_tokens)
+        return self.beta * F.linear(features, F.normalize(self.weight, dim=-1))
 
 
 class RobertaClassificationHead(nn.Module):
@@ -579,7 +580,7 @@ class RobertaEncoder(FairseqEncoder):
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
         if self.args.contrastive_pretraining:
-            self.clap_head = ClapHead(args.initial_beta)
+            self.lm_head = ClapHead(args.initial_beta, self.sentence_encoder.embed_tokens.weight)
         else:
             self.lm_head = self.build_lm_head(
                 embed_dim=args.encoder_embed_dim,
@@ -636,11 +637,7 @@ class RobertaEncoder(FairseqEncoder):
             src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
         if not features_only:
-            if self.args.contrastive_pretraining:
-                normalized_embed_tokens = F.normalize(self.sentence_encoder.embed_tokens.weight, dim=-1)
-                x = self.clap_head(x, normalized_embed_tokens, masked_tokens=masked_tokens)
-            else:
-                x = self.output_layer(x, masked_tokens=masked_tokens)
+            x = self.output_layer(x, masked_tokens=masked_tokens)
         return x, extra
 
     def extract_features(self, src_tokens, return_all_hiddens=False, **kwargs):
