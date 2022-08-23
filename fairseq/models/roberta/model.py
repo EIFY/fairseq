@@ -228,6 +228,11 @@ class RobertaModel(FairseqEncoderModel):
             default=1.0,
             help="initial beta for constrastive pretraining",
         )
+        parser.add_argument(
+            "--zero-masking",
+            action="store_true",
+            help="use zero vector instead of learned embedding for <mask>",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -575,7 +580,9 @@ class RobertaEncoder(FairseqEncoder):
             args.encoder_layers = len(args.encoder_layers_to_keep.split(","))
 
         embed_tokens = self.build_embedding(
-            len(dictionary), args.encoder_embed_dim, dictionary.pad()
+            len(dictionary), args.encoder_embed_dim,
+            # Workaround: torch.nn.Embedding() sets padding embedding to zero-vector, which can't be normalized.
+            None if self.args.contrastive_pretraining or self.args.zero_masking else dictionary.pad()
         )
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
@@ -594,8 +601,7 @@ class RobertaEncoder(FairseqEncoder):
             )
 
     def build_embedding(self, vocab_size, embedding_dim, padding_idx):
-        # Workaround: torch.nn.Embedding() sets padding embedding to zero-vector, which can't be normalized.
-        return nn.Embedding(vocab_size, embedding_dim, None if self.args.contrastive_pretraining else padding_idx)
+        return nn.Embedding(vocab_size, embedding_dim, padding_idx)
 
     def build_encoder(self, args, dictionary, embed_tokens):
         encoder = TransformerEncoder(args, dictionary, embed_tokens)
@@ -629,10 +635,18 @@ class RobertaEncoder(FairseqEncoder):
                   is a list of hidden states. Note that the hidden
                   states have shape `(src_len, batch, vocab)`.
         """
+        to_embed = src_tokens
+        if self.args.zero_masking:
+            pad_or_mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
+            to_embed = torch.clamp(src_tokens, max=len(self.dictionary) - 1)
+        token_embeddings = self.sentence_encoder.embed_tokens(to_embed)
         if self.args.contrastive_pretraining:
-            token_embeddings = F.normalize(self.sentence_encoder.embed_tokens(src_tokens), dim=-1)
-        else:
-            token_embeddings = None
+            token_embeddings = F.normalize(token_embeddings, dim=-1)
+        if self.args.zero_masking:
+            token_embeddings = (1 - pad_or_mask) * token_embeddings
+        # TransformerEncoder relies on src_tokens.eq(self.padding_idx) to compute padding mask,
+        # so we have to pass in the original src_tokens. As long as we also pass in token_embeddings,
+        # it won't call embed_tokens() again. 
         x, extra = self.extract_features(
             src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
@@ -709,6 +723,7 @@ def base_architecture(args):
 
     args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
     args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
+    args.zero_masking = safe_getattr(args, "zero_masking", False)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
