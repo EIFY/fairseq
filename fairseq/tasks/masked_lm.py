@@ -206,34 +206,42 @@ class MaskedLMTask(FairseqTask):
             else None
         )
 
-        src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
-            dataset,
-            self.source_dictionary,
-            pad_idx=self.source_dictionary.pad(),
-            mask_idx=self.mask_idx,
-            seed=self.cfg.seed,
-            mask_prob=self.cfg.mask_prob,
-            leave_unmasked_prob=self.cfg.leave_unmasked_prob,
-            random_token_prob=self.cfg.random_token_prob,
-            freq_weighted_replacement=self.cfg.freq_weighted_replacement,
-            mask_whole_words=mask_whole_words,
-            mask_multiple_length=self.cfg.mask_multiple_length,
-            mask_stdev=self.cfg.mask_stdev,
-        )
+        if not self.cfg.mask_prob:
+            logger.info("Mask probability = 0 so source and target datasets are identical and all tokens are projected")
+            src_dataset = tgt_dataset = dataset
+            source_dataset = target_dataset = RightPadDataset(
+                dataset,
+                pad_idx=self.source_dictionary.pad(),
+            )
+        else:
+            src_dataset, tgt_dataset = MaskTokensDataset.apply_mask(
+                dataset,
+                self.source_dictionary,
+                pad_idx=self.source_dictionary.pad(),
+                mask_idx=self.mask_idx,
+                seed=self.cfg.seed,
+                mask_prob=self.cfg.mask_prob,
+                leave_unmasked_prob=self.cfg.leave_unmasked_prob,
+                random_token_prob=self.cfg.random_token_prob,
+                freq_weighted_replacement=self.cfg.freq_weighted_replacement,
+                mask_whole_words=mask_whole_words,
+                mask_multiple_length=self.cfg.mask_multiple_length,
+                mask_stdev=self.cfg.mask_stdev,
+            )
+            source_dataset = RightPadDataset(
+                src_dataset,
+                pad_idx=self.source_dictionary.pad(),
+            )
+            target_dataset = RightPadDataset(
+                tgt_dataset,
+                pad_idx=self.source_dictionary.pad(),
+            )
 
         with data_utils.numpy_seed(self.cfg.seed):
             shuffle = np.random.permutation(len(src_dataset))
 
-        target_dataset = RightPadDataset(
-            tgt_dataset,
-            pad_idx=self.source_dictionary.pad(),
-        )
-
         input_dict = {
-            "src_tokens": RightPadDataset(
-                src_dataset,
-                pad_idx=self.source_dictionary.pad(),
-            ),
+            "src_tokens": source_dataset,
             "src_lengths": NumelDataset(src_dataset, reduce=False),
         }
         if self.cfg.include_target_tokens:

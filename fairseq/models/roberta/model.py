@@ -233,6 +233,13 @@ class RobertaModel(FairseqEncoderModel):
             action="store_true",
             help="use zero vector instead of learned embedding for <mask>",
         )
+        parser.add_argument(
+            "--mask-prob",
+            type=float,
+            metavar="P",
+            default=0.0,
+            help="probability of zero-masking some of the tokens with simple binomial distribution",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -637,7 +644,11 @@ class RobertaEncoder(FairseqEncoder):
         """
         to_embed = src_tokens
         if self.args.zero_masking:
-            pad_or_mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
+            if self.args.mask_prob:
+                pad_or_mask = torch.rand(*src_tokens.size(), device=src_tokens.device).lt(
+                    self.args.mask_prob).unsqueeze(-1).to(src_tokens)
+            else:
+                pad_or_mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
             to_embed = torch.clamp(src_tokens, max=len(self.dictionary) - 1)
         token_embeddings = self.sentence_encoder.embed_tokens(to_embed)
         if self.args.contrastive_pretraining:
@@ -724,6 +735,7 @@ def base_architecture(args):
     args.contrastive_pretraining = safe_getattr(args, "contrastive_pretraining", False)
     args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
     args.zero_masking = safe_getattr(args, "zero_masking", False)
+    args.mask_prob = safe_getattr(args, "mask_prob", 0.0)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
