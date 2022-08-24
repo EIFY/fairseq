@@ -171,6 +171,8 @@ class RobertaHubInterface(nn.Module):
             "<s> " + text_spans_bpe + " </s>",
             append_eos=False,
             add_if_not_exist=False,
+            masked_token=masked_token,
+            mask_idx=self.task.mask_idx
         )
 
         masked_index = (tokens == self.task.mask_idx).nonzero(as_tuple=False)

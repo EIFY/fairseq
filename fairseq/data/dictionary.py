@@ -204,7 +204,7 @@ class Dictionary:
 
     def pad(self):
         """Helper to get index of pad symbol"""
-        return self.pad_index if self.pad_word is not None else len(self)
+        return getattr(self, "pad_index", len(self))
 
     def eos(self):
         """Helper to get index of end-of-sentence symbol"""
@@ -212,7 +212,7 @@ class Dictionary:
 
     def unk(self):
         """Helper to get index of unk symbol"""
-        return self.unk_index
+        return getattr(self, "unk_index", None)
 
     @classmethod
     def load(cls, f, **omit_kwargs):
@@ -311,6 +311,8 @@ class Dictionary:
         consumer=None,
         append_eos=True,
         reverse_order=False,
+        masked_token=None,
+        mask_idx=None
     ) -> torch.IntTensor:
         words = line_tokenizer(line)
         if reverse_order:
@@ -319,7 +321,9 @@ class Dictionary:
         ids = torch.IntTensor(nwords + 1 if append_eos else nwords)
 
         for i, word in enumerate(words):
-            if add_if_not_exist:
+            if word == masked_token:
+                idx = mask_idx
+            elif add_if_not_exist:
                 idx = self.add_symbol(word)
             else:
                 idx = self.index(word)
