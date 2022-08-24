@@ -240,6 +240,13 @@ class RobertaModel(FairseqEncoderModel):
             default=0.0,
             help="probability of zero-masking some of the tokens with simple binomial distribution",
         )
+        parser.add_argument(
+            "--encoding-repeat",
+            type=int,
+            metavar="R",
+            default=1,
+            help="number of times to run the encoder over the embeddings",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -661,6 +668,13 @@ class RobertaEncoder(FairseqEncoder):
         x, extra = self.extract_features(
             src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
+
+        for _ in range(self.args.encoding_repeat - 1):
+            x = F.normalize(x, dim=-1)
+            x, extra = self.extract_features(
+                src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=x
+            )
+
         if not features_only:
             x = self.output_layer(x, masked_tokens=masked_tokens)
         return x, extra
@@ -736,6 +750,7 @@ def base_architecture(args):
     args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
     args.zero_masking = safe_getattr(args, "zero_masking", False)
     args.mask_prob = safe_getattr(args, "mask_prob", 0.0)
+    args.encoding_repeat = safe_getattr(args, "encoding_repeat", 1)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
