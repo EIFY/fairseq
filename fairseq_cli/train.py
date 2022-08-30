@@ -125,7 +125,7 @@ def main(cfg: FairseqConfig) -> None:
 
     # Something is resetting the parameters and I don't know what :(
     # So, I am forced to put this here.
-    if hasattr(model.encoder, "scales")
+    if hasattr(model.encoder, "scales"):
         model.encoder.scales.reset_parameters()
 
     # Load valid dataset (we load training data below, based on the latest checkpoint)
