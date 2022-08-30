@@ -10,6 +10,7 @@ import contextlib
 import sys
 from collections import Counter
 from multiprocessing import Pool
+import json
 
 from fairseq.data.encoders.gpt2_bpe import get_encoder
 
@@ -48,6 +49,11 @@ def main():
         "--keep-empty",
         action="store_true",
         help="keep empty lines",
+    )
+    parser.add_argument(
+        "--jsonlines",
+        action="store_true",
+        help="encode lines from jsonlines files",
     )
     parser.add_argument("--workers", type=int, default=20)
     args = parser.parse_args()
@@ -114,6 +120,8 @@ class MultiprocessingEncoder(object):
             line = line.strip()
             if len(line) == 0 and not self.args.keep_empty:
                 return ["EMPTY", None]
+            if self.args.jsonlines:
+                line = json.loads(line)["text"]
             tokens = self.encode(line)
             enc_lines.append(" ".join(tokens))
         return ["PASS", enc_lines]
