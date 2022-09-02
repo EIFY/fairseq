@@ -1,0 +1,53 @@
+# @package _group_
+common:
+  fp16: true
+  log_format: json
+  log_interval: 2000
+
+checkpoint:
+  no_epoch_checkpoints: true
+  save_interval_updates: 10000
+
+task:
+  _name: masked_lm
+  data: ???
+  sample_break_mode: complete
+  tokens_per_sample: 1024
+  omit_mask_and_pad: true
+  omit_unk: true
+
+criterion: masked_lm
+
+dataset:
+  batch_size: 24
+  ignore_unused_valid_subsets: true
+
+optimizer:
+  _name: adam
+  weight_decay: 0.01
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-06
+
+lr_scheduler:
+  _name: polynomial_decay
+  warmup_updates: 10000
+
+optimization:
+  clip_norm: 0
+  lr: [0.0006]
+  max_update: 1000000
+  max_epoch: 1
+  update_freq: [16]
+
+model:
+  _name: roberta
+  max_positions: 1024
+  dropout: 0.
+  attention_dropout: 0.
+  no_token_positional_embeddings: true
+  encoder_alibi: true
+  encoder_alibi_asymmetrical: true
+  layernorm_embedding: false
+  contrastive_pretraining: true
+  initial_beta: 1.
+  zero_masking: true
