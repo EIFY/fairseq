@@ -43,7 +43,7 @@ model:
   _name: roberta
   max_positions: 1024
   dropout: 0.
-  attention_dropout: 0.
+  attention_dropout: 0.1
   no_token_positional_embeddings: true
   encoder_alibi: true
   encoder_alibi_asymmetrical: true
