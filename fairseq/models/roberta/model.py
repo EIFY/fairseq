@@ -27,19 +27,7 @@ from fairseq.utils import safe_getattr, safe_hasattr
 
 from .hub_interface import RobertaHubInterface
 
-from power_spherical import PowerSpherical, HypersphericalUniform
-
 logger = logging.getLogger(__name__)
-
-
-class EmbeddingWithConstantInit(nn.Embedding):
-    def __init__(self, num_embeddings, embedding_dim, init_val):
-        self.init_val = init_val
-        print(self.init_val)
-        super().__init__(num_embeddings, embedding_dim)
-
-    def reset_parameters(self) -> None:
-        nn.init.constant_(self.weight, self.init_val)
 
 
 @register_model("roberta")
@@ -251,27 +239,6 @@ class RobertaModel(FairseqEncoderModel):
             metavar="P",
             default=0.0,
             help="probability of zero-masking some of the tokens with simple binomial distribution",
-        )
-        parser.add_argument(
-            "--encoding-repeat",
-            type=int,
-            metavar="R",
-            default=1,
-            help="number of times to run the encoder over the embeddings",
-        )
-        parser.add_argument(
-            "--vae-beta",
-            type=float,
-            metavar="B",
-            default=0.0,
-            help="If nonzero, train a beta S-VAE with the given beta",
-        )
-        parser.add_argument(
-            "--initial-scale",
-            type=float,
-            metavar="S",
-            default=1.0,
-            help="initial concentration for the power spherical distributions",
         )
         parser.add_argument(
             "--l2norm-embedding",
@@ -632,10 +599,6 @@ class RobertaEncoder(FairseqEncoder):
             # Workaround: torch.nn.Embedding() sets padding embedding to zero-vector, which can't be normalized.
             None if self.args.contrastive_pretraining or self.args.zero_masking else dictionary.pad()
         )
-        if self.args.vae_beta:
-            assert self.args.contrastive_pretraining and self.args.zero_masking
-            self.scales = EmbeddingWithConstantInit(len(dictionary), 1, self.args.initial_scale)
-            self.hyperspherical_uniform = HypersphericalUniform(args.encoder_embed_dim)
         self.sentence_encoder = self.build_encoder(args, dictionary, embed_tokens)
 
         if self.args.contrastive_pretraining:
@@ -698,10 +661,6 @@ class RobertaEncoder(FairseqEncoder):
         token_embeddings = self.sentence_encoder.embed_tokens(to_embed)
         if self.args.contrastive_pretraining and self.args.l2norm_embedding:
             token_embeddings = F.normalize(token_embeddings, dim=-1)
-        if self.args.vae_beta:
-            s = self.scales(to_embed).squeeze(-1)
-            ps = PowerSpherical(token_embeddings, s)
-            token_embeddings = ps.rsample()
         if self.args.zero_masking:
             unmasked = 1 - pad_or_mask
             token_embeddings = unmasked * token_embeddings
@@ -711,21 +670,8 @@ class RobertaEncoder(FairseqEncoder):
         x, extra = self.extract_features(
             src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
-
-        for _ in range(self.args.encoding_repeat - 1):
-            x = F.normalize(x, dim=-1)
-            x, extra = self.extract_features(
-                src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=x
-            )
-
         if not features_only:
             x = self.output_layer(x, masked_tokens=masked_tokens)
-
-        if self.args.vae_beta:
-            kld = unmasked.squeeze(-1) * torch.distributions.kl.kl_divergence(
-                ps, self.hyperspherical_uniform)
-            extra['auxiliary_loss'] = self.args.vae_beta * kld
-
         return x, extra
 
     def extract_features(self, src_tokens, return_all_hiddens=False, **kwargs):
@@ -799,9 +745,6 @@ def base_architecture(args):
     args.initial_beta = safe_getattr(args, "initial_beta", 1.0)
     args.zero_masking = safe_getattr(args, "zero_masking", False)
     args.mask_prob = safe_getattr(args, "mask_prob", 0.0)
-    args.encoding_repeat = safe_getattr(args, "encoding_repeat", 1)
-    args.vae_beta = safe_getattr(args, "vae_beta", 0.0)
-    args.initial_scale = safe_getattr(args, "initial_scale", 1.0)
     args.l2norm_embedding = safe_getattr(args, "l2norm_embedding", True)
 
 
