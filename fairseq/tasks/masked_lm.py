@@ -161,7 +161,6 @@ class MaskedLMTask(FairseqTask):
         dataset = data_utils.load_indexed_dataset(
             split_path,
             self.source_dictionary,
-            # dataset_impl='mmap',
             combine=combine,
         )
         if dataset is None:
