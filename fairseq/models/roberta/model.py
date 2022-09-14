@@ -273,6 +273,11 @@ class RobertaModel(FairseqEncoderModel):
             default=1.0,
             help="initial concentration for the power spherical distributions",
         )
+        parser.add_argument(
+            "--l2norm-embedding",
+            action="store_false",
+            help="normalize embeddings with l2 norm",
+        )
 
     @classmethod
     def build_model(cls, args, task):
@@ -560,12 +565,15 @@ class ClapHead(nn.Module):
         self.beta = nn.Parameter(torch.tensor(initial_beta))
         self.weight = weight
 
-    def forward(self, features, masked_tokens=None):
+    def forward(self, features, masked_tokens=None, normalize=True):
         # Only project the masked tokens while training,
         # saves both memory and computation
         if masked_tokens is not None:
             features = features[masked_tokens, :]
-        return self.beta * F.linear(features, F.normalize(self.weight, dim=-1))
+        w = self.weight
+        if normalize:
+            w = F.normalize(w, dim=-1)
+        return self.beta * F.linear(features, w)
 
 
 class RobertaClassificationHead(nn.Module):
@@ -688,7 +696,7 @@ class RobertaEncoder(FairseqEncoder):
                 pad_or_mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
             to_embed = torch.clamp(src_tokens, max=len(self.dictionary) - 1)
         token_embeddings = self.sentence_encoder.embed_tokens(to_embed)
-        if self.args.contrastive_pretraining:
+        if self.args.contrastive_pretraining and self.args.l2norm_embedding:
             token_embeddings = F.normalize(token_embeddings, dim=-1)
         if self.args.vae_beta:
             s = self.scales(to_embed).squeeze(-1)
@@ -732,7 +740,7 @@ class RobertaEncoder(FairseqEncoder):
         return features, {"inner_states": inner_states}
 
     def output_layer(self, features, masked_tokens=None, **unused):
-        return self.lm_head(features, masked_tokens)
+        return self.lm_head(features, masked_tokens, normalize=self.args.l2norm_embedding)
 
     def max_positions(self):
         """Maximum output length supported by the encoder."""
@@ -794,6 +802,7 @@ def base_architecture(args):
     args.encoding_repeat = safe_getattr(args, "encoding_repeat", 1)
     args.vae_beta = safe_getattr(args, "vae_beta", 0.0)
     args.initial_scale = safe_getattr(args, "initial_scale", 1.0)
+    args.l2norm_embedding = safe_getattr(args, "l2norm_embedding", True)
 
 
 @register_model_architecture("roberta", "roberta_prenorm")
