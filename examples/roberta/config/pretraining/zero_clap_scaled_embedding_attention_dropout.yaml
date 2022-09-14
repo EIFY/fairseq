@@ -2,24 +2,23 @@
 common:
   fp16: true
   log_format: json
-  log_interval: 10
+  log_interval: 200
 
 checkpoint:
   no_epoch_checkpoints: true
-  save_interval_updates: 10000
 
 task:
   _name: masked_lm
   data: ???
   sample_break_mode: complete
-  tokens_per_sample: 2048
+  tokens_per_sample: 512
   omit_mask_and_pad: true
   omit_unk: true
 
 criterion: masked_lm
 
 dataset:
-  batch_size: 1
+  batch_size: 16
   ignore_unused_valid_subsets: true
 
 optimizer:
@@ -34,14 +33,13 @@ lr_scheduler:
 
 optimization:
   clip_norm: 0
-  lr: [0.0006]
-  max_update: 1000000
-  max_epoch: 1
+  lr: [0.0005]
+  max_update: 125000
   update_freq: [16]
 
 model:
   _name: roberta
-  max_positions: 2048
+  max_positions: 512
   dropout: 0.
   attention_dropout: 0.1
   no_token_positional_embeddings: true
@@ -51,3 +49,4 @@ model:
   contrastive_pretraining: true
   initial_beta: 1.
   zero_masking: true
+  no_scale_embedding: false
