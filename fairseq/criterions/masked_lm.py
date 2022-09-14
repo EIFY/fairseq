@@ -55,7 +55,7 @@ class MaskedLmLoss(FairseqCriterion):
                 masked_tokens.new([True]),
             )
 
-        logits, extra = model(**sample["net_input"], masked_tokens=masked_tokens)
+        logits = model(**sample["net_input"], masked_tokens=masked_tokens)[0]
         targets = model.get_targets(sample, [logits])
         if masked_tokens is not None:
             targets = targets[masked_tokens]
@@ -73,12 +73,6 @@ class MaskedLmLoss(FairseqCriterion):
             "nsentences": sample["nsentences"],
             "sample_size": sample_size,
         }
-
-        if 'auxiliary_loss' in extra:
-            auxiliary_loss = extra['auxiliary_loss'].sum()
-            loss = loss + auxiliary_loss
-            logging_output['auxiliary_loss'] = auxiliary_loss
-
         return loss, sample_size, logging_output
 
     @staticmethod
@@ -86,7 +80,6 @@ class MaskedLmLoss(FairseqCriterion):
         """Aggregate logging outputs from data parallel training."""
         loss_sum = sum(log.get("loss", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
-        auxiliary_loss_sum = sum(log.get("auxiliary_loss", 0) for log in logging_outputs)
 
         metrics.log_scalar(
             "loss", loss_sum / sample_size / math.log(2), sample_size, round=5
@@ -94,10 +87,6 @@ class MaskedLmLoss(FairseqCriterion):
         metrics.log_derived(
             "ppl", lambda meters: utils.get_perplexity(meters["loss"].avg)
         )
-        metrics.log_scalar(
-            "auxiliary_loss", auxiliary_loss_sum / sample_size, sample_size, round=5
-        )
-
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
