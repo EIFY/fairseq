@@ -2,22 +2,23 @@
 common:
   fp16: true
   log_format: json
-  log_interval: 10
+  log_interval: 500
 
 checkpoint:
   no_epoch_checkpoints: true
-  save_interval_updates: 10000
+  save_interval_updates: 5000
 
 task:
   _name: masked_lm
   data: ???
   sample_break_mode: complete
   tokens_per_sample: 2048
+  shorten_method: truncate
 
 criterion: masked_lm
 
 dataset:
-  batch_size: 1
+  batch_size: 4
   ignore_unused_valid_subsets: true
 
 optimizer:
@@ -27,19 +28,19 @@ optimizer:
   adam_eps: 1e-06
 
 lr_scheduler:
-  _name: polynomial_decay
+  _name: cosine
   warmup_updates: 10000
+  lr_period_updates: 146390
+  lr_shrink: 1.0
+  min_lr: 0.00006
 
 optimization:
   clip_norm: 0
   lr: [0.0006]
-  max_update: 1000000
+  max_update: 133082
   max_epoch: 1
   update_freq: [16]
 
 model:
   _name: roberta
   max_positions: 2048
-  dropout: 0.1
-  attention_dropout: 0.1
-  encoder_learned_pos: false
