@@ -499,12 +499,9 @@ class RobertaModel(FairseqEncoderModel):
 class RobertaLMHead(nn.Module):
     """Head for masked language modeling."""
 
-    def __init__(self, embed_dim, output_dim, activation_fn, initial_beta, weight=None):
+    def __init__(self, embed_dim, output_dim, initial_beta, weight=None):
         super().__init__()
         self.dense = nn.Linear(embed_dim, embed_dim)
-        self.activation_fn = utils.get_activation_fn(activation_fn)
-        self.layer_norm = LayerNorm(embed_dim)
-
         self.beta = nn.Parameter(torch.tensor(initial_beta))
         if weight is None:
             weight = nn.Linear(embed_dim, output_dim, bias=False).weight
@@ -516,10 +513,7 @@ class RobertaLMHead(nn.Module):
         # saves both memory and computation
         if masked_tokens is not None:
             features = features[masked_tokens, :]
-
         x = self.dense(features)
-        x = self.activation_fn(x)
-        x = self.layer_norm(x)
         # project back to size of vocabulary with bias
         x = self.beta * F.linear(x, self.weight) + self.bias
         return x
@@ -608,7 +602,6 @@ class RobertaEncoder(FairseqEncoder):
             self.lm_head = self.build_lm_head(
                 embed_dim=args.encoder_embed_dim,
                 output_dim=len(dictionary),
-                activation_fn=args.activation_fn,
                 initial_beta=args.initial_beta,
                 weight=(
                     self.sentence_encoder.embed_tokens.weight
@@ -625,8 +618,8 @@ class RobertaEncoder(FairseqEncoder):
         encoder.apply(init_bert_params)
         return encoder
 
-    def build_lm_head(self, embed_dim, output_dim, activation_fn, initial_beta, weight):
-        return RobertaLMHead(embed_dim, output_dim, activation_fn, initial_beta, weight)
+    def build_lm_head(self, embed_dim, output_dim, initial_beta, weight):
+        return RobertaLMHead(embed_dim, output_dim, initial_beta, weight)
 
     def forward(
         self,
