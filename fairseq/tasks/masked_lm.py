@@ -110,14 +110,14 @@ class MaskedLMConfig(FairseqDataclass):
     omit_mask_and_pad: bool = field(
         default=False,
         metadata={
-            "help": "omit <mask> and <pad> from the dictionary and use placeholder indices instead."
+            "help": "omit <mask> from the dictionary."
         },
     )
 
     omit_unk: bool = field(
         default=False,
         metadata={
-            "help": "omit <unk> from the dictionary. This should only be used when <unk> isn't expected."
+            "help": "defunct and now has no effect."
         },
     )
 
@@ -134,7 +134,7 @@ class MaskedLMTask(FairseqTask):
         self.dictionary = dictionary
 
         if cfg.omit_mask_and_pad:
-            self.mask_idx = len(dictionary) + 1
+            self.mask_idx = len(dictionary)
         else:
             # add mask token
             self.mask_idx = dictionary.add_symbol("<mask>")
@@ -143,12 +143,7 @@ class MaskedLMTask(FairseqTask):
     def setup_task(cls, cfg: MaskedLMConfig, **kwargs):
         paths = utils.split_paths(cfg.data)
         assert len(paths) > 0
-        omit_kwargs = {}
-        if cfg.omit_mask_and_pad:
-            omit_kwargs['pad'] = None
-        if cfg.omit_unk:
-            omit_kwargs['unk'] = None
-        dictionary = Dictionary.load(os.path.join(paths[0], "dict.txt"), **omit_kwargs)
+        dictionary = Dictionary.load(os.path.join(paths[0], "dict.txt"))
         logger.info("dictionary: {} types".format(len(dictionary)))
         return cls(cfg, dictionary)
 

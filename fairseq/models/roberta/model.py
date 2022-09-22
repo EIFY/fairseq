@@ -650,23 +650,19 @@ class RobertaEncoder(FairseqEncoder):
                   is a list of hidden states. Note that the hidden
                   states have shape `(src_len, batch, vocab)`.
         """
-        to_embed = src_tokens
         if self.args.zero_masking:
             if self.args.mask_prob:
-                pad_or_mask = torch.rand(*src_tokens.size(), device=src_tokens.device).lt(
+                mask = torch.rand(*src_tokens.size(), device=src_tokens.device).lt(
                     self.args.mask_prob).unsqueeze(-1).to(src_tokens)
             else:
-                pad_or_mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
-            to_embed = torch.clamp(src_tokens, max=len(self.dictionary) - 1)
-        token_embeddings = self.sentence_encoder.embed_tokens(to_embed)
+                mask = src_tokens.ge(len(self.dictionary)).unsqueeze(-1).to(src_tokens)
+            src_tokens = torch.clamp(src_tokens, max=len(self.dictionary) - 1)
+        token_embeddings = self.sentence_encoder.embed_tokens(src_tokens)
         if self.args.contrastive_pretraining and self.args.l2norm_embedding:
             token_embeddings = F.normalize(token_embeddings, dim=-1)
         if self.args.zero_masking:
-            unmasked = 1 - pad_or_mask
+            unmasked = 1 - mask
             token_embeddings = unmasked * token_embeddings
-        # TransformerEncoder relies on src_tokens.eq(self.padding_idx) to compute padding mask,
-        # so we have to pass in the original src_tokens. As long as we also pass in token_embeddings,
-        # it won't call embed_tokens() again. 
         x, extra = self.extract_features(
             src_tokens, return_all_hiddens=return_all_hiddens, token_embeddings=token_embeddings
         )
