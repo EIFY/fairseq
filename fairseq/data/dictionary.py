@@ -32,11 +32,9 @@ class Dictionary:
         self.count = []
         self.indices = {}
         self.bos_index = self.add_symbol(bos)
-        if pad is not None:
-            self.pad_index = self.add_symbol(pad)
+        self.pad_index = self.add_symbol(pad)
         self.eos_index = self.add_symbol(eos)
-        if unk is not None:
-            self.unk_index = self.add_symbol(unk)
+        self.unk_index = self.add_symbol(unk)
         if extra_special_symbols:
             for s in extra_special_symbols:
                 self.add_symbol(s)
@@ -204,7 +202,7 @@ class Dictionary:
 
     def pad(self):
         """Helper to get index of pad symbol"""
-        return getattr(self, "pad_index", len(self))
+        return self.pad_index
 
     def eos(self):
         """Helper to get index of end-of-sentence symbol"""
@@ -212,10 +210,10 @@ class Dictionary:
 
     def unk(self):
         """Helper to get index of unk symbol"""
-        return getattr(self, "unk_index", None)
+        return self.unk_index
 
     @classmethod
-    def load(cls, f, **omit_kwargs):
+    def load(cls, f):
         """Loads the dictionary from a text file with the format:
 
         ```
@@ -224,7 +222,7 @@ class Dictionary:
         ...
         ```
         """
-        d = cls(**omit_kwargs)
+        d = cls()
         d.add_from_file(f)
         return d
 
