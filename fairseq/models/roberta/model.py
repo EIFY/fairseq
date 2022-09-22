@@ -506,7 +506,6 @@ class RobertaLMHead(nn.Module):
         if weight is None:
             weight = nn.Linear(embed_dim, output_dim, bias=False).weight
         self.weight = weight
-        self.bias = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, features, masked_tokens=None, **kwargs):
         # Only project the masked tokens while training,
@@ -514,8 +513,8 @@ class RobertaLMHead(nn.Module):
         if masked_tokens is not None:
             features = features[masked_tokens, :]
         x = self.dense(features)
-        # project back to size of vocabulary with bias
-        x = self.beta * F.linear(x, self.weight) + self.bias
+        # project back to size of vocabulary
+        x = self.beta * F.linear(x, self.weight)
         return x
 
 
