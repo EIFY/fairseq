@@ -83,6 +83,13 @@ class SentencePredictionConfig(FairseqDataclass):
     classification_head_name: str = II("criterion.classification_head_name")
     seed: int = II("common.seed")
 
+    omit_mask: bool = field(
+        default=False,
+        metadata={
+            "help": "omit <mask> from the dictionary."
+        },
+    )
+
 
 @register_task("sentence_prediction", dataclass=SentencePredictionConfig)
 class SentencePredictionTask(FairseqTask):
@@ -106,7 +113,8 @@ class SentencePredictionTask(FairseqTask):
             filename (str): the filename
         """
         dictionary = Dictionary.load(filename)
-        dictionary.add_symbol("<mask>")
+        if not cfg.omit_mask:
+            dictionary.add_symbol("<mask>")
         return dictionary
 
     @classmethod
