@@ -106,7 +106,7 @@ class SentencePredictionTask(FairseqTask):
         self._label_dictionary = label_dictionary
 
     @classmethod
-    def load_dictionary(cls, filename):
+    def load_dictionary(cls, cfg, filename):
         """Load the dictionary from the filename
 
         Args:
@@ -123,14 +123,14 @@ class SentencePredictionTask(FairseqTask):
 
         # load data dictionary
         data_dict = cls.load_dictionary(
-            os.path.join(cfg.data, "input0", "dict.txt"),
+            cfg, os.path.join(cfg.data, "input0", "dict.txt"),
         )
         logger.info("[input] dictionary: {} types".format(len(data_dict)))
 
         # load label dictionary
         if not cfg.regression_target:
             label_dict = cls.load_dictionary(
-                os.path.join(cfg.data, "label", "dict.txt"),
+                cfg, os.path.join(cfg.data, "label", "dict.txt"),
             )
             logger.info("[label] dictionary: {} types".format(len(label_dict)))
         else:
