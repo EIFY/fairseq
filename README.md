@@ -34,4 +34,23 @@ where solid lines are what's considered "canonical" setup and dotted lines are e
 As we can see, the dotted lines are almost on top of the solid lines. Notably, sinusoidal positional encoding underperforms significantly compared to the baseline.
 
 ## [The Pile](https://arxiv.org/abs/2101.00027)
-As the next step, we scaled our experiments to train on [the Pile](https://arxiv.org/abs/2101.00027) for one epoch. About half of the examples in the Pile has sequence length > 1024, so we set sequence length to 2048. Even so, ~1/7 of the examples have sequence length > 2048 and had to be discarded. In the end, one epoch consists of 133082 updates and we employ cosine learning rate schedule while "overestimating" the number of training steps by 10%, as inspired by [the Chinchilla paper](https://arxiv.org/abs/2203.15556).
+As the next step, we scaled our experiments to train on [the Pile](https://arxiv.org/abs/2101.00027) for one epoch. About half of the examples in the Pile has sequence length > 1024, so we set sequence length to 2048. Even so, ~1/7 of the examples have sequence length > 2048 and had to be discarded. In the end, one epoch consists of 133082 updates and [we employ cosine learning rate schedule while "overestimating" the number of training steps by 10%](https://github.com/EIFY/fairseq/blob/33fb2c306851f104cc567b7fe865b1e3fd1e6fe7/examples/roberta/config/pretraining/baseline_pile.yaml#L31-L36), as inspired by [the Chinchilla paper](https://arxiv.org/abs/2203.15556). In addition to the validation MLM perplexity, we also fine-tuned the models on [GLUE](https://gluebenchmark.com/). As in the original RoBERTa paper, we tested both the `roberta.base` with 125M parameters and `roberta.large` with 355M parameters. These experiments were performed on 8 x A100 40GB SXM4 GPUs, where the `roberta.base` experiments took ~3 days and `roberta.large` experiments took ~9 days. In the table below, `PPL` is the validation MLM perplexity, `STS-B` is the best validation loss, and all the others are the best validation accuracies over 10 epochs of finetuning.
+
+### `roberta.base`
+```
+             PPL  CoLA MNLI MRPC QNLI QQP  RTE  SST-2 STS-B
+baseline     2.94 83.6 84.2 90   91.6 91.3 73.6 92.1  0.028
+learned-clap 2.86 81.7 84.4 86.3 90.9 91.2 72.6 92.5  0.027
+alibi        2.93 69.2 85.1 80.9 92   91.5 63.9 93.1  0.033
+zero-clap    2.83 70.5 84.9 75.5 90.6 91.1 54.9 89.7  0.041
+```
+### `roberta.large`
+```
+             PPL  CoLA MNLI MRPC QNLI QQP  RTE  SST-2 STS-B
+baseline*    2.55 83.7 86.8 84.3 92.5 91.8 79.8 93.3  0.027
+learned-clap 2.5  84.1 86.3 89.7 92.8 91.7 79.8 93.7  0.023
+alibi        2.65 69.1 86.5 68.4 92.4 91.7 52.7 93.6  0.123
+zero-clap    2.54 69.1 86.7 81.9 92.2 91.6 52.7 93.1  0.031
+```
+*Loss spiked somewhere between 24000-24500 updates and the model failed to recover. Loosely following the practice of `5.1 Training Instability` in [the PaLM paper](https://arxiv.org/abs/2204.02311), we solved the issue by restarting the training from the 20000 updates checkpoint with the PyTorch random seed changed from `1` to `2`.
+
