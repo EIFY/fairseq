@@ -45,6 +45,8 @@ learned-clap 2.86 81.7 84.4 86.3 90.9 91.2 72.6 92.5  0.027
 alibi        2.93 69.2 85.1 80.9 92   91.5 63.9 93.1  0.033
 zero-clap    2.83 70.5 84.9 75.5 90.6 91.1 54.9 89.7  0.041
 ```
+\**Baseline with sinusoidal positional encoding failed to converge.*
+
 ### `roberta.large`
 ```
              PPL↓ CoLA MNLI MRPC QNLI QQP  RTE  SST-2 STS-B↓
