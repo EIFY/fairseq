@@ -12,8 +12,7 @@ task:
   data: ???
   sample_break_mode: complete
   tokens_per_sample: 512
-  omit_mask_and_pad: true
-  omit_unk: true
+  omit_mask: true
   mask_prob: 0.0
 
 criterion: masked_lm
