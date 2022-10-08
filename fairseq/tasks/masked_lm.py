@@ -107,17 +107,10 @@ class MaskedLMConfig(FairseqDataclass):
         },
     )
 
-    omit_mask_and_pad: bool = field(
+    omit_mask: bool = field(
         default=False,
         metadata={
             "help": "omit <mask> from the dictionary."
-        },
-    )
-
-    omit_unk: bool = field(
-        default=False,
-        metadata={
-            "help": "defunct and now has no effect."
         },
     )
 
@@ -133,7 +126,7 @@ class MaskedLMTask(FairseqTask):
         super().__init__(cfg)
         self.dictionary = dictionary
 
-        if cfg.omit_mask_and_pad:
+        if cfg.omit_mask:
             self.mask_idx = len(dictionary)
         else:
             # add mask token
