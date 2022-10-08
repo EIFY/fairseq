@@ -30,6 +30,7 @@ where solid lines are what's considered "canonical" setup and dotted lines are e
 2. Whether we use symmetrical ALiBi (option 1 in https://github.com/ofirpress/attention_with_linear_biases/issues/5) or asymmetrical ALiBi above
 3. Whether we use zero vector or a separate learnable embedding for the mask embedding
 4. Whether we L2-normalize the embeddings for the CLAP head or not
+5. Whether we scale the L2-normalized embeddings by `sqrt(embed_dim)` (`no_scale_embedding=False`) or not
 
 As we can see, the dotted lines are almost on top of the solid lines. Notably, sinusoidal positional encoding underperforms significantly compared to the baseline.
 
