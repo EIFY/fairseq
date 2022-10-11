@@ -22,7 +22,7 @@ Compared to the baseline prediction head, we removed the `embed_dim x embed_dim`
 ## [WikiText-103](https://www.salesforce.com/products/einstein/ai-research/the-wikitext-dependency-language-modeling-dataset/)
 At first we tested the changes with the [WikiText-103 dataset](https://www.salesforce.com/products/einstein/ai-research/the-wikitext-dependency-language-modeling-dataset/) with a GeForce RTX 3080 16 GB Laptop GPU, using the validation set MLM perplexity as the metric. We tested the baseline, learned-clap (baseline + CLAP head), ALiBi (baseline + ALiBi), and zero-clap (baseline + CLAP head + ALiBi), in addition to baseline but with sinusoidal positional encoding:
 
-![valid_ppl_cleaned](https://user-images.githubusercontent.com/2584418/194671509-ea3eea59-5796-433c-8986-2038f31d5c04.png)
+![valid_ppl_cleaned](https://user-images.githubusercontent.com/2584418/194981924-eaec75de-f35f-463d-921b-fdd779bc068f.png)
 
 where solid lines are what's considered "canonical" setup and dotted lines are experiments with minor differences in setup. We tested the following and found them to be irrelevant:
 
