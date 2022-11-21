@@ -61,3 +61,72 @@ We found that ALiBi no longer helps lowering the validation MLM perplexity. Furt
 
 # Conclusions
 This seems to be another case where models with lower perplexity do not necessarily yield higher accuracies for downstream tasks and architectural changes beneficial for models at smaller scales do not imply the same for models at larger scales ([Tay et al., 2022](https://arxiv.org/abs/2207.10551)). CLAP head, however, is simpler than the standard prediction head for MLMs, requires minimal changes, and may be worth trying especially at larger scales. 
+
+# Model checkpoints
+Final checkpoints for models trained on the Pile: 
+
+## `roberta.base`
+
+[baseline](https://drive.google.com/file/d/1r9VwJCU3AeuivNULRuY3Taq_3AEBg-v5/view?usp=share_link)  
+[learned-clap](https://drive.google.com/file/d/1KmO3FEaawz0tHW-s581NmrkL-OZklLYk/view?usp=share_link)  
+[alibi](https://drive.google.com/file/d/1s4Tcjnbawq1W6LBcknysj6NdpMfJdek6/view?usp=share_link)  
+[zero-clap](https://drive.google.com/file/d/1PwE_MASg4FinuKq6DX29A8c2lPP2B6nb/view?usp=share_link)
+
+## `roberta.large`
+
+[baseline](https://drive.google.com/file/d/1XSStju8S9y1BCHpXqZ_fZcueH3A0yW2c/view?usp=share_link)  
+[learned-clap](https://drive.google.com/file/d/1UyFxC3XoQ5eAhhXaAUQznLbBLa0J_45U/view?usp=share_link)  
+[alibi](https://drive.google.com/file/d/1D22xJxJTI4gPAD4gHfKaN1ytjQTy2u_y/view?usp=share_link)  
+[zero-clap](https://drive.google.com/file/d/1ktiRIVqz46DbV261_WxA9RELR971_2iu/view?usp=share_link)
+
+To load them, install this fork following [the original instructions](https://github.com/facebookresearch/fairseq/blob/b8ac3fa6cc95f9dc97085232d4faf125e5bcd2e7/README.md#requirements-and-installation) and download the GPT-2 fairseq dictionary:
+```
+wget -O gpt2_bpe/dict.txt https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/dict.txt
+```
+Then all of the checkpoints above except the `zero-clap` ones can load as follows:
+```
+$ python
+Python 3.8.10 (default, Jun 22 2022, 20:18:18) 
+[GCC 9.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from fairseq.models.roberta import RobertaModel
+>>> roberta = RobertaModel.from_pretrained('/checkpoint-dir', 'learned-clap-large.pt', '/dict-dir')
+(...)
+>>> roberta.fill_mask('The capital of China is <mask>.', topk=3)
+[('The capital of China is Beijing.', 0.7009016871452332, ' Beijing'), ('The capital of China is Shanghai.', 0.23566904664039612, ' Shanghai'), ('The capital of China is Moscow.', 0.010170688852667809, ' Moscow')]
+>>>
+```
+The `zero-clap` ones were trained without the last two `madeupword`'s, so you need to delete them from `dict.txt` before loading, i.e.:
+
+(...)  
+50009 0  
+50256 0  
+madeupword0000 0  
+~~madeupword0001 0~~  
+~~madeupword0002 0~~
+
+```
+$ python
+Python 3.8.10 (default, Jun 22 2022, 20:18:18) 
+[GCC 9.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from fairseq.models.roberta import RobertaModel
+>>> roberta = RobertaModel.from_pretrained('/checkpoint-dir', 'zero-clap-large.pt', '/dict-dir')
+(...)
+>>> roberta.fill_mask('The capital of China is <mask>.', topk=3)
+[('The capital of China is Beijing.', 0.7051425576210022, ' Beijing'), ('The capital of China is Shanghai.', 0.21408841013908386, ' Shanghai'), ('The capital of China is Taiwan.', 0.007823833264410496, ' Taiwan')]
+>>> 
+```
+
+The rest of the original [example usage](https://github.com/facebookresearch/fairseq/blob/b8ac3fa6cc95f9dc97085232d4faf125e5bcd2e7/examples/roberta/README.md#example-usage) should also just work. While these checkpoints have only been tested with this fork, the `baseline` ones should also work with the [original fairseq repo](https://github.com/facebookresearch/fairseq) with minimum changes to the state dict:
+
+```
+>>> path = '/checkpoint-dir/baseline-large.pt'
+>>> with open(path, 'rb') as f:
+...   state = torch.load(f, map_location=torch.device("cpu"))
+... 
+>>> 
+>>> del state['cfg']['task']['omit_mask']
+(...)
+>>> torch.save(state, '/checkpoint-dir/compatible.pt')
+```
