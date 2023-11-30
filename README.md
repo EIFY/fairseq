@@ -28,7 +28,7 @@ where solid lines are what's considered "canonical" setup and dotted lines are e
 
 1. Whether we use attention dropout or not
 2. Whether we use symmetrical ALiBi (option 1 in https://github.com/ofirpress/attention_with_linear_biases/issues/5) or asymmetrical ALiBi above
-3. Whether we use zero vector or a separate learnable embedding for the mask embedding
+3. ~~Whether we use zero vector or a separate learnable embedding for the mask embedding~~
 4. Whether we L2-normalize the embeddings for the CLAP head or not
 5. Whether we scale the L2-normalized embeddings by `sqrt(embed_dim)` (`no_scale_embedding=False`) or not
 
