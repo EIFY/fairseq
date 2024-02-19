@@ -20,7 +20,7 @@ Compared to the baseline prediction head, we removed the `embed_dim x embed_dim`
 # Experiments
 
 ## [WikiText-103](https://www.salesforce.com/products/einstein/ai-research/the-wikitext-dependency-language-modeling-dataset/)
-At first we tested the changes with the [WikiText-103 dataset](https://www.salesforce.com/products/einstein/ai-research/the-wikitext-dependency-language-modeling-dataset/) with a GeForce RTX 3080 16 GB Laptop GPU, using the validation set MLM perplexity as the metric. We tested the baseline, learned-clap (baseline + CLAP head), ALiBi (baseline + ALiBi), and zero-clap (baseline + CLAP head + ALiBi), in addition to baseline but with sinusoidal positional encoding:
+At first we tested the changes with the [WikiText-103 dataset](https://www.salesforce.com/products/einstein/ai-research/the-wikitext-dependency-language-modeling-dataset/) with a GeForce RTX 3080 16 GB Laptop GPU, using the validation set MLM perplexity as the metric. We tested the baseline (learned positional encoding + RoBERTa prediction head), learned-clap (learned positional encoding + CLAP head), ALiBi (ALiBi + RoBERTa prediction head), and zero-clap (ALiBi + CLAP head), in addition to baseline but with sinusoidal positional encoding instead of learned positional encoding:
 
 ![valid_ppl_cleaned](https://user-images.githubusercontent.com/2584418/194981924-eaec75de-f35f-463d-921b-fdd779bc068f.png)
 
@@ -32,7 +32,7 @@ where solid lines are what's considered "canonical" setup and dotted lines are e
 4. Whether we L2-normalize the embeddings for the CLAP head or not
 5. Whether we scale the L2-normalized embeddings by `sqrt(embed_dim)` (`no_scale_embedding=False`) or not
 
-As we can see, the dotted lines are almost on top of the solid lines. Notably, sinusoidal positional encoding underperforms significantly compared to the baseline.
+As we can see, the dotted lines are almost on top of the solid lines. Notably, sinusoidal positional encoding underperforms significantly compared to learned positional encoding.
 
 ## [The Pile](https://arxiv.org/abs/2101.00027)
 As the next step, we scaled our experiments to train on [the Pile](https://arxiv.org/abs/2101.00027) for one epoch. About half of the examples in the Pile has sequence length > 1024, so we set sequence length to 2048. Even so, ~1/7 of the examples have sequence length > 2048 and had to be discarded. In the end, one epoch consists of 133082 updates and [we employ cosine learning rate schedule while "overestimating" the number of training steps by 10%](https://github.com/EIFY/fairseq/blob/33fb2c306851f104cc567b7fe865b1e3fd1e6fe7/examples/roberta/config/pretraining/baseline_pile.yaml#L31-L36), as inspired by [the Chinchilla paper](https://arxiv.org/abs/2203.15556). In addition to the validation MLM perplexity, we also fine-tuned the models on the [GLUE](https://gluebenchmark.com/) benchmark. As in the original RoBERTa paper, we tested both the `roberta.base` with 125M parameters and `roberta.large` with 355M parameters. These experiments were performed on 8 x A100 40GB SXM4 GPUs, where the `roberta.base` experiments took ~3 days and `roberta.large` experiments took ~9 days. In the table below, `PPL` is the final validation MLM perplexity, `STS-B` is the best validation loss, and all the others are the best validation accuracies over 10 epochs of finetuning.
@@ -45,7 +45,7 @@ learned-clap 2.86 81.7 84.4 86.3 90.9 91.2 72.6 92.5  0.027
 alibi        2.93 69.2 85.1 80.9 92   91.5 63.9 93.1  0.033
 zero-clap    2.83 70.5 84.9 75.5 90.6 91.1 54.9 89.7  0.041
 ```
-\**Baseline with sinusoidal positional encoding failed to converge.*
+\**Baseline but with sinusoidal positional encoding instead of learned positional encoding failed to converge.*
 
 ### `roberta.large`
 ```
